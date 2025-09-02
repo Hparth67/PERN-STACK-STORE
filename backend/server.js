@@ -12,7 +12,7 @@ import { aj } from "./lib/arcjet.js";
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3005;
 const __dirname = path.resolve();
 
 app.use(express.json());
@@ -26,6 +26,11 @@ app.use(morgan("dev")); // log the requests
 
 // apply arcjet rate-limit to all routes
 app.use(async (req, res, next) => {
+  // Only allow bypass in local/dev environment
+  const ua = req.headers['user-agent'] || '';
+  if (process.env.NODE_ENV !== 'production' && ua.toLowerCase().includes('postman')) {
+    return next();
+  }
   try {
     const decision = await aj.protect(req, {
       requested: 1, // specifies that each request consumes 1 token
@@ -59,7 +64,7 @@ app.use("/api/products", productRoutes);
 
 if (process.env.NODE_ENV === "production") {
   // server our react app
-  app.use(express.static(path.join(__dirname, "/frontend/dist")));
+  app.use(express.static(path.join(__dirname,"/frontend/dist")));
 
   app.get("*", (req, res) => {
     res.sendFile(path.resolve(__dirname, "frontend", "dist", "index.html"));
@@ -89,5 +94,3 @@ initDB().then(() => {
     console.log("Server is running on port " + PORT);
   });
 });
-
-
